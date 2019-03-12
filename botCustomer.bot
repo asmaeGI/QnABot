@@ -1,70 +1,74 @@
 {
-  "name": "botCustomer",
-  "padlock": "e6NDqv+7aWun4BRtMqh73w==!Uhkk1VLzYNMyqNYLYhMzn+2XeZD8lYsqpeXg+EV/P6A6yvGF9XKx3LbL+JDVKD08",
-  "version": "2.0",
-  "services": [
-    {
-      "tenantId": "20f62116-4d0c-44ac-8a45-390ca2765601",
-      "subscriptionId": "47516a6e-0e53-4019-9871-3cacea620f8e",
-      "resourceGroup": "QnaResource",
-      "serviceName": "botCustomer",
-      "type": "abs",
-      "name": "botCustomer",
-      "id": "1"
-    },
-    {
-      "connectionString": "bGZ54cWFb1ej8DgrJy5yJg==!/3+FiXFjwoZvWkmeam2eIKRYiYY7WPEAZBJwv/jueFNKIqbqrs5CrP7Q3h7Pw+oAU0l/ccyAb093z9gC3ujPYvEsbYiWiwWeVFqDpQ/hjwS5ExooRMbLKLJIKqe25yxBAjuosxFLco421KGepve884vlEg5u5dz7ZkQb13mVLox6+diywZk3KZ+C5mhzY4Gj0uw67olWJjp/Mh1Gf0+ghA==",
-      "tenantId": "20f62116-4d0c-44ac-8a45-390ca2765601",
-      "subscriptionId": "47516a6e-0e53-4019-9871-3cacea620f8e",
-      "resourceGroup": "QnaResource",
-      "serviceName": "botcustomerbfaa",
-      "type": "blob",
-      "id": "2"
-    },
-    {
-      "appId": "",
-      "appPassword": "",
-      "endpoint": "http://localhost:3978/api/messages",
-      "type": "endpoint",
-      "name": "development",
-      "id": "3"
-    },
-    {
-      "appId": "928c8497-c2e4-41dd-a3d5-15b5b9ac573b",
-      "appPassword": "5Cxn1LHdZ3lCXpfiK3g5lQ==!AVBYNCSqr/b4G+7yJD4MWY4DZxrOmdPOcaVntY98TyU=",
-      "endpoint": "https://botcustomer.azurewebsites.net/api/messages",
-      "type": "endpoint",
-      "name": "production",
-      "id": "4"
-    },
-    {
-      "instrumentationKey": "Rw4PRWLzWmGWEtu27z1ayQ==!EkGcCNqlz/LKbbxKLaLvT1aNJFd4TYDYrjbeJKZAPIk9jzjW/+NYnDy82+cfOmVh",
-      "applicationId": "1b4bc4e6-4ba5-42d6-8a9e-4b8d63a8aaad",
-      "apiKeys": {},
-      "tenantId": "20f62116-4d0c-44ac-8a45-390ca2765601",
-      "subscriptionId": "47516a6e-0e53-4019-9871-3cacea620f8e",
-      "resourceGroup": "QnaResource",
-      "serviceName": "botCustomeruihdjm",
-      "type": "appInsights",
-      "id": "5"
-    },
-    {
-      "appId": "9cc822cd-84e1-41ef-a0cb-7e0be0d27cc1",
-      "authoringKey": "orimLDY2KfMKR5Yd/5Vg/A==!61hxSbtKlhNRlRb8wb5mJtzLqlQlwRxbSPgBNhupPdJ44/GtVB+8KHS+9tadhdmb",
-      "version": "0.1",
-      "region": "westus",
-      "type": "luis",
-      "name": "BasicBotLuisApplication",
-      "id": "6"
-    },
-    {
-      "type": "qna",
-      "EndpointKey": "08a1ca01-eadf-4734-9618-7a6380490b26",
-      "Hostname": "https://qnacustomerservice.azurewebsites.net/qnamaker",
-      "KbId": "62272374-5c59-4bc9-8f70-58c3dd672ff5",
-      "SubscriptionKey": "47516a6e-0e53-4019-9871-3cacea620f8e",
-      "id": "118",
-      "name": "QnAMakerActiveLearning"
-    }
-  ]
+    "name": "botCustomer",
+    "description": "",
+    "services": [
+        {
+            "type": "abs",
+            "appId": "928c8497-c2e4-41dd-a3d5-15b5b9ac573b",
+            "id": "1",
+            "name": "botCustomer",
+            "resourceGroup": "QnaResource",
+            "serviceName": "botCustomer",
+            "subscriptionId": "47516a6e-0e53-4019-9871-3cacea620f8e",
+            "tenantId": "20f62116-4d0c-44ac-8a45-390ca2765601"
+        },
+        {
+            "type": "blob",
+            "connectionString": "8UJlrECH5uGq1pm6hGplzQ==!FJ/vZTi2z3SckrZzJJaWxVTFdwZsVXmbLoRFo0sulLBgqIWwOdYWpwpg7RFkoxgV0vkN9VHv2YQkQxJaPHvV94UMQwIW++iI+AHw+8U+cf9ocUwPHS6GFXJmFSNNXyaTngCkerx15VF87+ZpKeuto/zlD18LCKBJPPsW3ncH5yIo9va9pgC2fJPK/vu3w0W40x0be8XCe11EIV6VmtDR6Q==",
+            "id": "2",
+            "resourceGroup": "QnaResource",
+            "serviceName": "botcustomerbfaa",
+            "subscriptionId": "47516a6e-0e53-4019-9871-3cacea620f8e",
+            "tenantId": "20f62116-4d0c-44ac-8a45-390ca2765601"
+        },
+        {
+            "type": "endpoint",
+            "appId": "",
+            "appPassword": "",
+            "endpoint": "http://localhost:3978/api/messages",
+            "id": "3",
+            "name": "development"
+        },
+        {
+            "type": "endpoint",
+            "appId": "928c8497-c2e4-41dd-a3d5-15b5b9ac573b",
+            "appPassword": "vkgiFl61q+aqfYLbmi6a8w==!tcaQ/sCVg5DZQf6Qa7FPqgfEHEKSftVf6eqePw/3WHM=",
+            "endpoint": "https://botcustomer.azurewebsites.net/api/messages",
+            "id": "4",
+            "name": "production"
+        },
+        {
+            "type": "appInsights",
+            "apiKeys": {},
+            "applicationId": "1b4bc4e6-4ba5-42d6-8a9e-4b8d63a8aaad",
+            "id": "5",
+            "instrumentationKey": "NdeBPL6jEssKgsVWxTrH8Q==!5S9ygbOUsFXY1xnWUEjmMm7LKMK4Qj3qG90tg8RBXOod0Kfvyecc1RU154vD8h9q",
+            "resourceGroup": "QnaResource",
+            "serviceName": "botCustomeruihdjm",
+            "subscriptionId": "47516a6e-0e53-4019-9871-3cacea620f8e",
+            "tenantId": "20f62116-4d0c-44ac-8a45-390ca2765601"
+        },
+        {
+            "type": "luis",
+            "appId": "9cc822cd-84e1-41ef-a0cb-7e0be0d27cc1",
+            "authoringKey": "nE4uSc452AoZ70Ig3EJl0A==!abtEb7dqMnSg6udHhVFXrxrPo9/njJ8G+DW31I9ubQUv09aeu0o1FZqgVTaXOa/h",
+            "id": "6",
+            "name": "BasicBotLuisApplication",
+            "region": "westus",
+            "version": "0.1"
+        },
+        {
+            "type": "qna",
+            "endpointKey": "epL6U6+IB2DT1srNGBO7EA==!IIGroWd/FSMP3GcsEBHkhAE2DrDYPK0mtYfJKa1BY6yfJ3P0/UrKO9jwoa3RnC/e",
+            "hostname": "https://qnacustomerservice.azurewebsites.net/qnamaker",
+            "id": "62272374-5c59-4bc9-8f70-58c3dd672ff5",
+            "kbId": "62272374-5c59-4bc9-8f70-58c3dd672ff5",
+            "name": "botCustomerKB",
+            "subscriptionKey": "N3injq4PH0OSzzcbjX/l2Q==!RAeiR+zm19xsMGv9FCpmqjM09Dfreyt6snasbitYcfW4rPhcEZPfHHFg8TP2E59E"
+        }
+    ],
+    "padlock": "e6NDqv+7aWun4BRtMqh73w==!Uhkk1VLzYNMyqNYLYhMzn+2XeZD8lYsqpeXg+EV/P6A6yvGF9XKx3LbL+JDVKD08",
+    "version": "2.0",
+    "path": "C:\\Users\\abouhmidi\\source\\repos\\botCustomer-src\\botCustomer.bot",
+    "overrides": null
 }

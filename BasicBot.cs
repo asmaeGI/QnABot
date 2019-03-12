@@ -25,12 +25,15 @@ namespace Microsoft.BotBuilderSamples
         public const string CancelIntent = "Cancel";
         public const string HelpIntent = "Help";
         public const string NoneIntent = "None";
+        public const string ShoesIntent = "Shoes";
 
         /// <summary>
         /// Key in the bot config (.bot file) for the LUIS instance.
         /// In the .bot file, multiple instances of LUIS can be configured.
         /// </summary>
         public static readonly string LuisConfiguration = "BasicBotLuisApplication";
+
+        public static readonly string QnAMakerKey = "botCustomerKB";
 
         private readonly IStatePropertyAccessor<GreetingState> _greetingStateAccessor;
         private readonly IStatePropertyAccessor<DialogState> _dialogStateAccessor;
@@ -58,8 +61,15 @@ namespace Microsoft.BotBuilderSamples
                 throw new InvalidOperationException($"The bot configuration does not contain a service type of `luis` with the id `{LuisConfiguration}`.");
             }
 
+            if (!_services.QnAServices.ContainsKey(QnAMakerKey))
+            {
+                throw new System.ArgumentException(
+                    $"Invalid configuration. Please check your '.bot' file for a QnA service named '{QnAMakerKey}'.");
+            }
+
             Dialogs = new DialogSet(_dialogStateAccessor);
             Dialogs.Add(new GreetingDialog(_greetingStateAccessor, loggerFactory));
+            Dialogs.Add(new ShoesDialog());
         }
 
         private DialogSet Dialogs { get; set; }
@@ -80,67 +90,9 @@ namespace Microsoft.BotBuilderSamples
             if (activity.Type == ActivityTypes.Message)
             {
                 // Perform a call to LUIS to retrieve results for the current activity message.
-                var luisResults = await _services.LuisServices[LuisConfiguration].RecognizeAsync(dc.Context, cancellationToken);
 
-                // If any entities were updated, treat as interruption.
-                // For example, "no my name is tony" will manifest as an update of the name to be "tony".
-                var topScoringIntent = luisResults?.GetTopScoringIntent();
-
-                var topIntent = topScoringIntent.Value.intent;
-
-                // update greeting state with any entities captured
-                await UpdateGreetingState(luisResults, dc.Context);
-
-                // Handle conversation interrupts first.
-                var interrupted = await IsTurnInterruptedAsync(dc, topIntent);
-                if (interrupted)
-                {
-                    // Bypass the dialog.
-                    // Save state before the next turn.
-                    await _conversationState.SaveChangesAsync(turnContext);
-                    await _userState.SaveChangesAsync(turnContext);
-                    return;
-                }
-
-                // Continue the current dialog
-                var dialogResult = await dc.ContinueDialogAsync();
-
-                // if no one has responded,
-                if (!dc.Context.Responded)
-                {
-                    // examine results from active dialog
-                    switch (dialogResult.Status)
-                    {
-                        case DialogTurnStatus.Empty:
-                            switch (topIntent)
-                            {
-                                case GreetingIntent:
-                                    await dc.BeginDialogAsync(nameof(GreetingDialog));
-                                    break;
-
-                                case NoneIntent:
-                                default:
-                                    // Help or no intent identified, either way, let's provide some help.
-                                    // to the user
-                                    await dc.Context.SendActivityAsync("I didn't understand what you just said to me.");
-                                    break;
-                            }
-
-                            break;
-
-                        case DialogTurnStatus.Waiting:
-                            // The active dialog is waiting for a response from the user, so do nothing.
-                            break;
-
-                        case DialogTurnStatus.Complete:
-                            await dc.EndDialogAsync();
-                            break;
-
-                        default:
-                            await dc.CancelAllDialogsAsync();
-                            break;
-                    }
-                }
+                // QnA//
+                await QnAResponse(turnContext, cancellationToken);
             }
             else if (activity.Type == ActivityTypes.ConversationUpdate)
             {
@@ -163,6 +115,100 @@ namespace Microsoft.BotBuilderSamples
 
             await _conversationState.SaveChangesAsync(turnContext);
             await _userState.SaveChangesAsync(turnContext);
+        }
+
+        /// <summary>
+        /// QnA Maker response.
+        /// </summary>
+        /// <param name="turnContext">Activity Text.</param>
+        /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+        /// <returns>QnA Response , if the response equal null call luis .</returns>
+        public async Task QnAResponse(ITurnContext turnContext, CancellationToken cancellationToken)
+        {
+            var responseQnA = await _services.QnAServices[QnAMakerKey].GetAnswersAsync(turnContext);
+
+            if (responseQnA != null && responseQnA.Length > 0)
+            {
+                await turnContext.SendActivityAsync(responseQnA[0].Answer, cancellationToken: cancellationToken);
+            }
+            else
+            {
+                // Luis
+                await this.LuisResponse(turnContext, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Luis Intent Function .
+        /// </summary>
+        /// <param name="turnContext">Activity Text.</param>
+        /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+        /// <returns>Luis Response.</returns>
+        public async Task LuisResponse(ITurnContext turnContext, CancellationToken cancellationToken)
+        {
+            var dc = await Dialogs.CreateContextAsync(turnContext);
+
+            var luisResults = await _services.LuisServices[LuisConfiguration].RecognizeAsync(dc.Context, cancellationToken);
+
+            var topScoringIntent = luisResults?.GetTopScoringIntent();
+
+            var topIntent = topScoringIntent.Value.intent;
+
+            // update greeting state with any entities captured
+            await UpdateGreetingState(luisResults, dc.Context);
+
+            // Handle conversation interrupts first.
+            var interrupted = await IsTurnInterruptedAsync(dc, topIntent);
+            if (interrupted)
+            {
+                // Bypass the dialog.
+                // Save state before the next turn.
+                await _conversationState.SaveChangesAsync(turnContext);
+                await _userState.SaveChangesAsync(turnContext);
+                return;
+            }
+
+            // Continue the current dialog
+            var dialogResult = await dc.ContinueDialogAsync();
+
+            // if no one has responded,
+            if (!dc.Context.Responded)
+            {
+                // examine results from active dialog
+                switch (dialogResult.Status)
+                {
+                    case DialogTurnStatus.Empty:
+                        switch (topIntent)
+                        {
+                            case GreetingIntent:
+                                await dc.BeginDialogAsync(nameof(GreetingDialog));
+                                break;
+                            case ShoesIntent:
+                                await dc.BeginDialogAsync(nameof(ShoesDialog));
+                                break;
+                            case NoneIntent:
+                            default:
+                                // Help or no intent identified, either way, let's provide some help.
+                                // to the user
+                                await dc.Context.SendActivityAsync("I didn't understand what you just said to me.");
+                                break;
+                        }
+
+                        break;
+
+                    case DialogTurnStatus.Waiting:
+                        // The active dialog is waiting for a response from the user, so do nothing.
+                        break;
+
+                    case DialogTurnStatus.Complete:
+                        await dc.EndDialogAsync();
+                        break;
+
+                    default:
+                        await dc.CancelAllDialogsAsync();
+                        break;
+                }
+            }
         }
 
         // Determine if an interruption has occurred before we dispatch to any active dialog.
@@ -194,6 +240,13 @@ namespace Microsoft.BotBuilderSamples
                 }
 
                 return true;        // Handled the interrupt.
+            }
+
+            if (topIntent.Equals(ShoesIntent))
+            {
+                await dc.CancelAllDialogsAsync();
+                await dc.BeginDialogAsync(nameof(ShoesDialog));
+                return true;
             }
 
             return false;           // Did not handle the interrupt.
