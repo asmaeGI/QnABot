@@ -330,6 +330,7 @@ namespace Microsoft.BotBuilderSamples
             }
 
         }
+
         private async Task UpdateShoesState(RecognizerResult luisResult, ITurnContext turnContext)
         {
             if (luisResult.Entities != null && luisResult.Entities.HasValues)

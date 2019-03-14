@@ -87,7 +87,6 @@ namespace Microsoft.BotBuilderSamples
         {
             var greetingState = await UserProfileAccessor.GetAsync(stepContext.Context);
 
-           
             if (string.IsNullOrWhiteSpace(greetingState.Name))
             {
                 // prompt for name, if missing

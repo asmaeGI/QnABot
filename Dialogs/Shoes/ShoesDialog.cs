@@ -153,7 +153,7 @@ namespace Microsoft.BotBuilderSamples
         private async Task<DialogTurnResult> ShoesSuggestionPromptAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             shoesState = await UserProfileAccessor.GetAsync(stepContext.Context);
-
+            var ShoesList = await ShoesSuggestionListAsync();
             //var dc = stepContext.Context.Activity;
             //var lowerCasePrice = stepContext.Result as string ;
 
@@ -167,9 +167,9 @@ namespace Microsoft.BotBuilderSamples
             {
                 Prompt = new Activity
                 {
-                    Text = $"What do you think of these?",
+                    Text =ShoesList.Count==0? $"could not find anything" : $"What do you think of these?",
                     Type = ActivityTypes.Message,
-                    Attachments = ShoesSuggestionListAsync(),
+                    Attachments =ShoesList,
                     AttachmentLayout = AttachmentLayoutTypes.Carousel,
                 },
             };
@@ -185,43 +185,46 @@ namespace Microsoft.BotBuilderSamples
             return await stepContext.EndDialogAsync();
         }
 
-        private List<Attachment> ShoesSuggestionListAsync()
+        private async Task<List<Attachment>> ShoesSuggestionListAsync()
         {
-            var products = new List<Product> {
-                new Product("adidas ", 220, "https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg", "Sneakers"),
-                new Product("PUMA ", 20, "https://images-na.ssl-images-amazon.com/images/I/71XRCCS3igL._AC_SR201,266_.jpg", "Sneakers"),
-                new Product("NIKE ", 590, "https://images-na.ssl-images-amazon.com/images/I/41JtpXekzNL._AC_UL260_SR200,260_.jpg", "Sneakers"),
-                new Product("adidas22 ", 30, "https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg", "Sneakers"),
-                new Product("adidas ", 560, "https://images-na.ssl-images-amazon.com/images/I/61XnSvWaj7L._AC_SR201,266_.jpg", "Sneakers"),
+            //var products = new List<Product> {
+            //    new Product("adidas ", 220, "https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg", "Sneakers"),
+            //    new Product("PUMA ", 20, "https://images-na.ssl-images-amazon.com/images/I/71XRCCS3igL._AC_SR201,266_.jpg", "Sneakers"),
+            //    new Product("NIKE ", 590, "https://images-na.ssl-images-amazon.com/images/I/41JtpXekzNL._AC_UL260_SR200,260_.jpg", "Sneakers"),
+            //    new Product("adidas22 ", 30, "https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg", "Sneakers"),
+            //    new Product("adidas ", 560, "https://images-na.ssl-images-amazon.com/images/I/61XnSvWaj7L._AC_SR201,266_.jpg", "Sneakers"),
 
-            };
+            //};
+            var products = await ApiServices.GetProductByCategorie(shoesState);
             List<Attachment> attachments = new List<Attachment>();
             foreach (var p in products)
             {
-                if (shoesState.PriceMin != 0 && shoesState.PriceMax != 0)
-                {
-                    if (p.Price > shoesState.PriceMin && p.Price < shoesState.PriceMax)
-                    {
-                        attachments.Add(CardProduct(p).ToAttachment());
-                    }
-                }
-                else
-                {
-                    if (shoesState.PriceMax == 0)
-                    {
-                        if (p.Price > shoesState.PriceMin)
-                        {
-                            attachments.Add(CardProduct(p).ToAttachment());
-                        }
-                    }
-                    else
-                    {
-                        if (p.Price < shoesState.PriceMax)
-                        {
-                            attachments.Add(CardProduct(p).ToAttachment());
-                        }
-                    }
-                }
+                attachments.Add(CardProduct(p).ToAttachment());
+
+                //if (shoesState.PriceMin != 0 && shoesState.PriceMax != 0)
+                //{
+                //    if (p.Price > shoesState.PriceMin && p.Price < shoesState.PriceMax)
+                //    {
+                //        attachments.Add(CardProduct(p).ToAttachment());
+                //    }
+                //}
+                //else
+                //{
+                //    if (shoesState.PriceMax == 0)
+                //    {
+                //        if (p.Price > shoesState.PriceMin)
+                //        {
+                //            attachments.Add(CardProduct(p).ToAttachment());
+                //        }
+                //    }
+                //    else
+                //    {
+                //        if (p.Price < shoesState.PriceMax)
+                //        {
+                //            attachments.Add(CardProduct(p).ToAttachment());
+                //        }
+                //    }
+                //}
             }
 
             return attachments;
