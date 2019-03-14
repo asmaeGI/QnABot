@@ -1,10 +1,16 @@
 ﻿using BasicBot.Dialogs;
+using BasicBot.Dialogs.Shoes;
 using BasicBot.Model;
+using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,10 +26,14 @@ namespace Microsoft.BotBuilderSamples
     public class ShoesDialog : ComponentDialog
     {
         // User state for greeting dialog
+        private const string ShoesStateProperty = "shoesState";
 
         // Dialog IDs
         private const string ProfileDialog = "profileDialog";
         private const string CategoriePrompt = "categoriePrompt";
+        private const string PricePrompt = "pricePrompt";
+        private const string ShoesListPrompt = "shoesListPrompt";
+        private ShoesState shoesState;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ShoesDialog"/> class.
@@ -31,13 +41,15 @@ namespace Microsoft.BotBuilderSamples
         /// <param name="botServices">Connected services used in processing.</param>
         /// <param name="botState">The <see cref="UserState"/> for storing properties at user-scope.</param>
         /// <param name="loggerFactory">The <see cref="ILoggerFactory"/> that enables logging and tracing.</param>
-        public ShoesDialog()
+        public ShoesDialog(IStatePropertyAccessor<ShoesState> userProfileStateAccessor, ILoggerFactory loggerFactory)
             : base(nameof(ShoesDialog))
         {
+            UserProfileAccessor = userProfileStateAccessor ?? throw new ArgumentNullException(nameof(userProfileStateAccessor));
 
             // Add control flow dialogs
             var waterfallSteps = new WaterfallStep[]
             {
+                    InitializeStateStepAsync,
                     ShoesCategoriePromptAsync,
                     ShoesPricePromptAsync,
                     ShoesSuggestionPromptAsync,
@@ -45,18 +57,45 @@ namespace Microsoft.BotBuilderSamples
             };
             AddDialog(new WaterfallDialog(ProfileDialog, waterfallSteps));
             AddDialog(new TextPrompt(CategoriePrompt));
+            AddDialog(new TextPrompt(PricePrompt));
+            AddDialog(new TextPrompt(ShoesListPrompt));
+            }
+
+        public IStatePropertyAccessor<ShoesState> UserProfileAccessor { get; }
+
+        private async Task<DialogTurnResult> InitializeStateStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            var shoesState = await UserProfileAccessor.GetAsync(stepContext.Context, () => null);
+            if (shoesState == null)
+            {
+                var shoesStateOpt = stepContext.Options as ShoesState;
+                if (shoesStateOpt != null)
+                {
+                    await UserProfileAccessor.SetAsync(stepContext.Context, shoesStateOpt);
+                }
+                else
+                {
+                    await UserProfileAccessor.SetAsync(stepContext.Context, new ShoesState());
+                }
+            }
+
+            return await stepContext.NextAsync();
         }
 
         private async Task<DialogTurnResult> ShoesCategoriePromptAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var dc = stepContext.Context.Activity;
-            if (dc.Text.Equals("Sneakers") || dc.Text.Equals("Loafers") || dc.Text.Equals("Boots"))
+            var shoesState = await UserProfileAccessor.GetAsync(stepContext.Context);
+
+            if (dc.Text.Equals("Sneakers") || dc.Text.Equals("Loafers") || dc.Text.Equals("Boots") || shoesState.Categorie!=null)
             {
                 return await stepContext.NextAsync();
             }
-
-            PromptOptions opts = CardShoesCategorie();
-            return await stepContext.PromptAsync(CategoriePrompt, opts);
+            else
+            {
+                PromptOptions opts = CardShoesCategorie();
+                return await stepContext.PromptAsync(CategoriePrompt, opts);
+            }
         }
 
         private PromptOptions CardShoesCategorie()
@@ -72,7 +111,6 @@ namespace Microsoft.BotBuilderSamples
             };
             var opts = new PromptOptions
             {
-
                 Prompt = new Activity
                 {
                     Text = $"Great what Kind of shoes?",
@@ -88,18 +126,42 @@ namespace Microsoft.BotBuilderSamples
 
         private async Task<DialogTurnResult> ShoesPricePromptAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            var shoesState = await UserProfileAccessor.GetAsync(stepContext.Context);
             var dc = stepContext.Context.Activity;
-            if (dc.Text.Equals("Under") || dc.Text.Equals("To") || dc.Text.Equals("Over"))
+            var lowerCaseCategorie =shoesState.Categorie;
+            if (dc.Text.Equals("Sneakers") || dc.Text.Equals("Loafers") || dc.Text.Equals("Boots"))
+            {
+                lowerCaseCategorie = dc.Text;
+            }
+
+            if (string.IsNullOrWhiteSpace(shoesState.Categorie) && lowerCaseCategorie !=null)
+            {
+                shoesState.Categorie = char.ToUpper(lowerCaseCategorie[0]) + lowerCaseCategorie.Substring(1);
+                await UserProfileAccessor.SetAsync(stepContext.Context, shoesState);
+            }
+
+            if (shoesState.PriceMin == 0 && shoesState.PriceMax == 0)
+            {
+                return await stepContext.PromptAsync(PricePrompt, CardServices.CardPrice());
+            }
+            else
             {
                 return await stepContext.NextAsync();
             }
-            return await stepContext.PromptAsync(CategoriePrompt, CardServices.CardPrice());
         }
-
 
         private async Task<DialogTurnResult> ShoesSuggestionPromptAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var dc = stepContext.Context.Activity;
+            shoesState = await UserProfileAccessor.GetAsync(stepContext.Context);
+
+            //var dc = stepContext.Context.Activity;
+            //var lowerCasePrice = stepContext.Result as string ;
+
+            //if (string.IsNullOrWhiteSpace(shoesState.Categorie) && lowerCasePrice != null)
+            //{
+            //    shoesState.PriceMin = Convert.ToDouble(lowerCasePrice);
+            //    await UserProfileAccessor.SetAsync(stepContext.Context, shoesState);
+            //}
 
             var opts = new PromptOptions
             {
@@ -107,11 +169,11 @@ namespace Microsoft.BotBuilderSamples
                 {
                     Text = $"What do you think of these?",
                     Type = ActivityTypes.Message,
-                    Attachments = ShoesSuggestionList(),
+                    Attachments = ShoesSuggestionListAsync(),
                     AttachmentLayout = AttachmentLayoutTypes.Carousel,
                 },
             };
-            return await stepContext.PromptAsync(CategoriePrompt, opts);
+            return await stepContext.PromptAsync(ShoesListPrompt, opts);
         }
 
         private async Task<DialogTurnResult> GoodByeUser(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -123,93 +185,45 @@ namespace Microsoft.BotBuilderSamples
             return await stepContext.EndDialogAsync();
         }
 
-        private List<HeroCard> ShoesSuggestionList1()
-        {
-            List<HeroCard> shoesList = new List<HeroCard>
-            {
-                new HeroCard()
-                {
-                    Title = "adidas",
-                    Subtitle = "39.98",
-                    Text = "Skechers Men's Go Golf Elite 3 Shoe",
-                    Images = new List<CardImage>
-                    {
-                       new CardImage("https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg"),
-                    },
-                    Buttons = new List<CardAction>()
-                   {
-                       new CardAction(ActionTypes.ImBack, title: "Buy this item", value: "Buy"),
-                       new CardAction(ActionTypes.ImBack, title: "See more like this", value: "More"),
-                       new CardAction(ActionTypes.ImBack, title: "Ask a question", value: "Question"),
-                    },
-                },
-                new HeroCard()
-                {
-                    Title = "Skechers",
-                    Subtitle = "68.55",
-                    Text = "PUMA Men's Ignite Nxt Pro Golf Shoe",
-                    Images = new List<CardImage>
-                    {
-                       new CardImage("https://images-na.ssl-images-amazon.com/images/I/61XnSvWaj7L._AC_SR201,266_.jpg"),
-                    },
-                    Buttons = new List<CardAction>()
-                   {
-                      new CardAction(ActionTypes.ImBack, title: "Buy this item", value: "Buy"),
-                      new CardAction(ActionTypes.ImBack, title: "See more like this", value: "More"),
-                      new CardAction(ActionTypes.ImBack, title: "Ask a question", value: "Question"),
-                    },
-                },
-                new HeroCard()
-                {
-                    Title = "adidas",
-                    Subtitle = "97.41",
-                    Text = "ECCO Men's Biom Hybrid 2 Hydromax Golf Shoe",
-                    Images = new List<CardImage>
-                    {
-                       new CardImage("https://images-na.ssl-images-amazon.com/images/I/71XRCCS3igL._AC_SR201,266_.jpg"),
-                    },
-                    Buttons = new List<CardAction>()
-                   {
-                       new CardAction(ActionTypes.ImBack, title: "Buy this item", value: "Buy"),
-                       new CardAction(ActionTypes.ImBack, title: "See more like this", value: "More"),
-                       new CardAction(ActionTypes.ImBack, title: "Ask a question", value: "Question"),
-                    },
-                },
-                new HeroCard()
-                {
-                    Title = "adidas",
-                    Subtitle = "109.15",
-                    Text = "Nike Men's Explorer 2 Golf Shoe",
-                    Images = new List<CardImage>
-                    {
-                       new CardImage("http://contososcubademo.azurewebsites.net/assets/tofu.jpg"),
-                    },
-                    Buttons = new List<CardAction>()
-                   {
-                       new CardAction(ActionTypes.ImBack, title: "Buy this item", value: "Buy"),
-                       new CardAction(ActionTypes.ImBack, title: "See more like this", value: "More"),
-                       new CardAction(ActionTypes.ImBack, title: "Ask a question", value: "Question"),
-                    },
-                },
-             };
-            return shoesList;
-        }
-
-        private List<Attachment> ShoesSuggestionList()
+        private List<Attachment> ShoesSuggestionListAsync()
         {
             var products = new List<Product> {
-                new Product("adidas ",1020,"https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg","Sneakers"),
-                new Product("PUMA ",120,"https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg","Sneakers"),
-                new Product("NIKE ",590,"https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg","Sneakers"),
-                new Product("adidas22 ",300,"https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg","Sneakers"),
-                new Product("adidas ",560,"https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg","Sneakers"),
-        
+                new Product("adidas ", 220, "https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg", "Sneakers"),
+                new Product("PUMA ", 20, "https://images-na.ssl-images-amazon.com/images/I/71XRCCS3igL._AC_SR201,266_.jpg", "Sneakers"),
+                new Product("NIKE ", 590, "https://images-na.ssl-images-amazon.com/images/I/41JtpXekzNL._AC_UL260_SR200,260_.jpg", "Sneakers"),
+                new Product("adidas22 ", 30, "https://images-na.ssl-images-amazon.com/images/I/812Y0qDRtsL._AC_SR201,266_.jpg", "Sneakers"),
+                new Product("adidas ", 560, "https://images-na.ssl-images-amazon.com/images/I/61XnSvWaj7L._AC_SR201,266_.jpg", "Sneakers"),
+
             };
             List<Attachment> attachments = new List<Attachment>();
             foreach (var p in products)
             {
-                attachments.Add(CardProduct(p).ToAttachment());
+                if (shoesState.PriceMin != 0 && shoesState.PriceMax != 0)
+                {
+                    if (p.Price > shoesState.PriceMin && p.Price < shoesState.PriceMax)
+                    {
+                        attachments.Add(CardProduct(p).ToAttachment());
+                    }
+                }
+                else
+                {
+                    if (shoesState.PriceMax == 0)
+                    {
+                        if (p.Price > shoesState.PriceMin)
+                        {
+                            attachments.Add(CardProduct(p).ToAttachment());
+                        }
+                    }
+                    else
+                    {
+                        if (p.Price < shoesState.PriceMax)
+                        {
+                            attachments.Add(CardProduct(p).ToAttachment());
+                        }
+                    }
+                }
             }
+
             return attachments;
         }
 

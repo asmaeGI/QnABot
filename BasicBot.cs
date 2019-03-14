@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using BasicBot.Dialogs.Shoes;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
@@ -36,6 +37,7 @@ namespace Microsoft.BotBuilderSamples
         public static readonly string QnAMakerKey = "botCustomerKB";
 
         private readonly IStatePropertyAccessor<GreetingState> _greetingStateAccessor;
+        private readonly IStatePropertyAccessor<ShoesState> _shoesStateAccessor;
         private readonly IStatePropertyAccessor<DialogState> _dialogStateAccessor;
         private readonly UserState _userState;
         private readonly ConversationState _conversationState;
@@ -53,6 +55,7 @@ namespace Microsoft.BotBuilderSamples
             _conversationState = conversationState ?? throw new ArgumentNullException(nameof(conversationState));
 
             _greetingStateAccessor = _userState.CreateProperty<GreetingState>(nameof(GreetingState));
+            _shoesStateAccessor = _userState.CreateProperty<ShoesState>(nameof(ShoesState));
             _dialogStateAccessor = _conversationState.CreateProperty<DialogState>(nameof(DialogState));
 
             // Verify LUIS configuration.
@@ -69,7 +72,7 @@ namespace Microsoft.BotBuilderSamples
 
             Dialogs = new DialogSet(_dialogStateAccessor);
             Dialogs.Add(new GreetingDialog(_greetingStateAccessor, loggerFactory));
-            Dialogs.Add(new ShoesDialog());
+            Dialogs.Add(new ShoesDialog(_shoesStateAccessor, loggerFactory));
         }
 
         private DialogSet Dialogs { get; set; }
@@ -156,6 +159,7 @@ namespace Microsoft.BotBuilderSamples
 
             // update greeting state with any entities captured
             await UpdateGreetingState(luisResults, dc.Context);
+            await UpdateShoesState(luisResults, dc.Context);
 
             // Handle conversation interrupts first.
             var interrupted = await IsTurnInterruptedAsync(dc, topIntent);
@@ -248,6 +252,12 @@ namespace Microsoft.BotBuilderSamples
                 await dc.BeginDialogAsync(nameof(ShoesDialog));
                 return true;
             }
+            if (topIntent.Equals(GreetingIntent))
+            {
+                await dc.CancelAllDialogsAsync();
+                await dc.BeginDialogAsync(nameof(GreetingDialog));
+                return true;
+            }
 
             return false;           // Did not handle the interrupt.
         }
@@ -318,6 +328,62 @@ namespace Microsoft.BotBuilderSamples
                 // Set the new values into state.
                 await _greetingStateAccessor.SetAsync(turnContext, greetingState);
             }
+
         }
-    }
+        private async Task UpdateShoesState(RecognizerResult luisResult, ITurnContext turnContext)
+        {
+            if (luisResult.Entities != null && luisResult.Entities.HasValues)
+            {
+                // Get latest GreetingState
+                var shoesState = await _shoesStateAccessor.GetAsync(turnContext, () => new ShoesState());
+                var entities = luisResult.Entities;
+
+                shoesState.PriceMax = 0;
+                shoesState.PriceMin = 0;
+
+                // Supported LUIS Entities
+                string[] productCategoriEntities = { "productCategorie", "productCategorie_patternAny" };
+                string[] priceMinEntities = { "priceMin", "priceMin_patternAny" };
+                string[] priceMaxEntities = { "priceMax", "priceMax_patternAny" };
+
+                // Update any entities
+                // Note: Consider a confirm dialog, instead of just updating.
+                foreach (var productCategorie in productCategoriEntities)
+                {
+                    // Check if we found valid slot values in entities returned from LUIS.
+                    if (entities[productCategorie] != null)
+                    {
+                        // Capitalize and set new user name.
+                        var newCategorie = (string)entities[productCategorie][0];
+                        shoesState.Categorie = char.ToUpper(newCategorie[0]) + newCategorie.Substring(1);
+                        break;
+                    }
+                }
+
+                foreach (var priceMin in priceMinEntities)
+                {
+                    if (entities[priceMin] != null)
+                    {
+                        // Capitalize and set new city.
+                        var newPriceMin = (string)entities[priceMin][0];
+                        shoesState.PriceMin = Convert.ToDouble(newPriceMin);
+                        break;
+                    }
+                }
+
+                foreach (var priceMax in priceMaxEntities)
+                {
+                    if (entities[priceMax] != null)
+                    {
+                        // Capitalize and set new city.
+                        var newPriceMax = (string)entities[priceMax][0];
+                        shoesState.PriceMax = Convert.ToDouble(newPriceMax);
+                        break;
+                    }
+                }
+                // Set the new values into state.
+                await _shoesStateAccessor.SetAsync(turnContext, shoesState);
+            }
+        }
+        }
 }
